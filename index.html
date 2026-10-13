@@ -1,1 +1,665 @@
-<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WeatherDashboard_v2</title><style>body{margin:0;padding:20px;background:#071a3d;color:#fff;font-family:"Microsoft JhengHei",sans-serif}.container{max-width:1600px;margin:auto}.header{text-align:center}.search-box{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:20px 0}.search-box input{padding:12px;border-radius:12px;border:none;width:320px}.btn{border:none;background:#0ea5e9;color:#fff;padding:12px 18px;border-radius:12px;cursor:pointer}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}.card{position:relative;border-radius:24px;padding:24px;min-height:220px;box-shadow:0 10px 25px rgba(0,0,0,.35);animation:cardFadeIn .5s ease}.city{text-align:center;font-size:36px;font-weight:700;margin-bottom:20px}.row{display:flex;justify-content:space-between;margin:10px 0}.deleteBtn{position:absolute;top:12px;right:12px;width:36px;height:36px;border:none;border-radius:50%;background:rgba(255,255,255,.25);backdrop-filter:blur(10px);opacity:0;transition:.25s}.card:hover .deleteBtn{opacity:1}.toast{position:fixed;top:20px;right:20px;padding:14px 20px;border-radius:14px;color:#fff;z-index:9999}.toast-success{background:rgba(34,197,94,.9)}.toast-delete{background:rgba(239,68,68,.9)}.toast-info{background:rgba(15,23,42,.92)}@keyframes cardFadeIn{from{opacity:0;transform:translateY(25px)}to{opacity:1;transform:none}}</style></head><body><div class="container"><div class="header"><h1>⛅ 簡單天氣查詢APP</h1></div><div class="search-box"><input id="citySearch" placeholder="輸入城市名稱"><button class="btn" onclick="addCity()">➕加入城市</button><button class="btn" onclick="loadWeather()">🔄更新</button><button class="btn" onclick="resetCities()">↺恢復預設</button></div><div id="weatherContainer" class="cards"></div><div id="updateTime"></div></div><script>const defaultCities=[{name:'🇹🇼 台北',lat:25.033,lon:121.5654},{name:'🇯🇵 東京',lat:35.6762,lon:139.6503},{name:'🇯🇵 大阪',lat:34.6937,lon:135.5023},{name:'🇨🇳 上海',lat:31.2304,lon:121.4737},{name:'🇨🇳 哈爾濱',lat:45.8038,lon:126.5349},{name:'🇯🇵 米澤',lat:37.9222,lon:140.1168}];let cities=JSON.parse(localStorage.getItem('weatherDashboardCities'))||[...defaultCities];const cityDatabase={'福岡':{lat:33.5902,lon:130.4017},'名古屋':{lat:35.1815,lon:136.9066},'北京':{lat:39.9042,lon:116.4074}};function saveCities(){localStorage.setItem('weatherDashboardCities',JSON.stringify(cities));}function resetCities(){cities=[...defaultCities];saveCities();showToast('已恢復預設城市','info');loadWeather();}function showToast(m,t='info'){const d=document.createElement('div');d.className='toast toast-'+t;d.textContent=m;document.body.appendChild(d);setTimeout(()=>d.remove(),3000);}function addCity(){const city=document.getElementById('citySearch').value.trim();if(!cityDatabase[city])return;cities.push({name:city,lat:cityDatabase[city].lat,lon:cityDatabase[city].lon});saveCities();showToast(city+' 已加入','success');loadWeather();}function removeCity(name){if(cities.length<=1){alert('至少保留一個城市');return;}cities=cities.filter(c=>c.name!==name);saveCities();showToast(name+' 已刪除','delete');loadWeather();}function getTempColor(t){if(t<=0)return '#fff';if(t<=10)return '#dbeafe';if(t<=22)return '#fef9c3';if(t<=29)return '#facc15';if(t<=36)return '#fb923c';return '#ef4444';}function getTextColor(bg){const h=bg.replace('#','');const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);return (((r*299)+(g*587)+(b*114))/1000)>160?'#000':'#fff';}function weatherText(c){return {0:'☀️ 晴天',1:'🌤 晴時多雲',2:'⛅ 多雲',3:'☁️ 陰天'}[c]||'未知';}async function getCityWeather(city){try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current=temperature_2m,relative_humidity_2m,weather_code&hourly=precipitation_probability`);const d=await r.json();return {city:city.name,temp:Number(d.current.temperature_2m),humi:Number(d.current.relative_humidity_2m),weather:weatherText(d.current.weather_code),rain:Number(d.hourly?.precipitation_probability?.[0]||0)};}catch(e){return {city:city.name,temp:0,humi:0,weather:'失敗',rain:0};}}async function loadWeather(){const c=document.getElementById('weatherContainer');c.innerHTML='';const rs=await Promise.all(cities.map(getCityWeather));rs.sort((a,b)=>b.temp-a.temp);const max=Math.max(...rs.map(x=>x.temp));const min=Math.min(...rs.map(x=>x.temp));rs.forEach(i=>{const bg=getTempColor(i.temp),tc=getTextColor(bg);let icon=i.temp===max?'🔥':(i.temp===min?'❄️':'');c.innerHTML+=`<div class="card" style="background:${bg};color:${tc}"><button class="deleteBtn" onclick="removeCity('${i.city}')">✕</button><div class="city">${icon} ${i.city}</div><div class="row"><span>🌡氣溫</span><span>${i.temp.toFixed(1)}°C</span></div><div class="row"><span>💧濕度</span><span>${i.humi}%</span></div><div class="row"><span>☁️天氣</span><span>${i.weather}</span></div><div class="row"><span>☔降雨</span><span>${i.rain}%</span></div></div>`});document.getElementById('updateTime').innerText='最後更新：'+new Date().toLocaleString();}document.getElementById('citySearch').addEventListener('keypress',e=>{if(e.key==='Enter')addCity();});loadWeather();setInterval(loadWeather,3600000);</script></body></html>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeatherDashboard v4 Lite</title>
+
+<style>
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:12px;
+    background:#071a3d;
+    color:#fff;
+    font-family:"Microsoft JhengHei",sans-serif;
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+}
+
+h1{
+    text-align:center;
+    margin:10px 0 15px;
+}
+
+.toolbar{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:15px;
+}
+
+input{
+    padding:8px;
+    border:none;
+    border-radius:8px;
+}
+
+button{
+    cursor:pointer;
+}
+
+.add-btn{
+    border:none;
+    border-radius:8px;
+    background:#4caf50;
+    color:white;
+    padding:8px 12px;
+}
+
+.refresh-btn{
+    border:none;
+    border-radius:8px;
+    background:#2196f3;
+    color:white;
+    padding:8px 12px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:
+    repeat(auto-fit,minmax(260px,1fr));
+    gap:10px;
+}
+
+.card{
+    border-radius:16px;
+    padding:12px;
+    color:black;
+    box-shadow:0 3px 10px rgba(0,0,0,.25);
+}
+
+.city{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:18px;
+    font-weight:bold;
+}
+
+.city-actions{
+    display:flex;
+    gap:2px;
+}
+
+.city-actions button{
+    border:none;
+    border-radius:6px;
+    padding:4px 6px;
+    cursor:pointer;
+    background:white;
+}
+
+.delete-btn{
+    background:red !important;
+    color:white;
+}
+
+.temp{
+    font-size:32px;
+    font-weight:bold;
+    margin:6px 0;
+}
+
+.desc{
+    margin-bottom:8px;
+    font-size:14px;
+}
+
+.info-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:4px;
+    font-size:14px;
+}
+
+.forecast{
+    display:flex;
+    overflow-x:auto;
+    gap:6px;
+    margin-top:10px;
+}
+
+.forecast-item{
+    min-width:70px;
+    text-align:center;
+    padding:4px;
+    border-radius:8px;
+    background:rgba(255,255,255,.25);
+    font-size:12px;
+}
+
+.footer{
+    text-align:center;
+    margin-top:15px;
+    color:#ccc;
+    font-size:12px;
+}
+
+@media(max-width:768px){
+
+    .temp{
+        font-size:28px;
+    }
+
+    .card{
+        padding:10px;
+    }
+
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🌤 WeatherDashboard v4 Lite</h1>
+
+<div class="toolbar">
+
+    <input
+    id="cityInput"
+    placeholder="輸入城市名稱">
+
+    <button
+    class="add-btn"
+    onclick="addCity()">
+    ➕ 新增城市
+    </button>
+
+    <button
+    class="refresh-btn"
+    onclick="loadAllWeather()">
+    🔄 Refresh
+    </button>
+
+</div>
+
+<div id="myWeather">
+⏳ 正在取得GPS定位...
+</div>
+
+<div
+id="weatherGrid"
+class="grid">
+</div>
+
+<div
+id="updateTime"
+class="footer">
+</div>
+
+</div>
+
+<script>
+
+const cityDatabase={
+
+    台北:{
+        name:"台北",
+        lat:25.0330,
+        lon:121.5654
+    },
+
+    東京:{
+        name:"東京",
+        lat:35.6762,
+        lon:139.6503
+    },
+
+    大阪:{
+        name:"大阪",
+        lat:34.6937,
+        lon:135.5023
+    },
+
+    哈爾濱:{
+        name:"哈爾濱",
+        lat:45.8038,
+        lon:126.5350
+    },
+
+    米澤:{
+        name:"米澤",
+        lat:37.9222,
+        lon:140.1167
+    },
+
+    上海:{
+        name:"上海",
+        lat:31.2304,
+        lon:121.4737
+    }
+
+};
+
+let cities=
+JSON.parse(
+localStorage.getItem("cities")
+)
+||
+[
+cityDatabase.台北,
+cityDatabase.東京,
+cityDatabase.大阪,
+cityDatabase.哈爾濱,
+cityDatabase.米澤,
+cityDatabase.上海
+];
+
+function saveCities(){
+
+    localStorage.setItem(
+        "cities",
+        JSON.stringify(cities)
+    );
+
+}
+
+function getColor(temp){
+
+    if(temp<=0) return "#ffffff";
+    if(temp<=10) return "#bde0ff";
+    if(temp<=22) return "#fff2a8";
+    if(temp<=29) return "#f7d34a";
+    if(temp<=36) return "#ffb54a";
+
+    return "#ff5555";
+}
+
+function weatherCode(code){
+
+    const map={
+
+        0:"☀️ 晴天",
+        1:"🌤 晴時多雲",
+        2:"⛅ 多雲",
+        3:"☁️ 陰天",
+        45:"🌫 有霧",
+        48:"🌫 濃霧",
+        51:"🌦 毛毛雨",
+        61:"🌧 下雨",
+        71:"❄️ 下雪",
+        95:"⛈ 雷雨"
+
+    };
+
+    return map[code] || "🌤";
+}
+
+async function fetchWeather(url){
+
+    try{
+
+        const res=await fetch(url);
+
+        if(!res.ok){
+            throw new Error();
+        }
+
+        return await res.json();
+
+    }catch(error){
+
+        console.error(error);
+
+        return null;
+
+    }
+
+}
+
+async function loadMyWeather(lat,lon){
+
+    const url=
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m&timezone=auto`;
+
+    const data=
+    await fetchWeather(url);
+
+    if(!data){
+
+        document.getElementById(
+        "myWeather"
+        ).innerHTML=
+        "❌ 天氣資料取得失敗";
+
+        return;
+    }
+
+    const temp=
+    data.current_weather.temperature;
+
+    let html=`
+
+    <div class="card"
+    style="background:${getColor(temp)}">
+
+        <div class="city">
+            📍目前位置（GPS）
+        </div>
+
+        <div class="temp">
+            ${temp}°C
+        </div>
+
+        <div class="forecast">
+    `;
+
+    const now=new Date();
+
+    const startIndex=
+    data.hourly.time.findIndex(
+    t=>new Date(t)>now
+    );
+
+    for(let i=0;i<6;i++){
+
+        if(
+        startIndex+i>=
+        data.hourly.time.length
+        ){
+            break;
+        }
+
+        const d=
+        new Date(
+        data.hourly.time[startIndex+i]
+        );
+
+        const hh=
+        String(
+        d.getHours()
+        ).padStart(2,"0");
+
+        html+=`
+
+        <div class="forecast-item">
+
+            ${hh}:00
+
+            <br>
+
+            ${data.hourly.temperature_2m[startIndex+i]}°
+
+        </div>
+
+        `;
+    }
+
+    html+=`
+        </div>
+    </div>
+    `;
+
+    document.getElementById(
+    "myWeather"
+    ).innerHTML=html;
+}
+
+async function createCard(city){
+
+    const url=
+    `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min&hourly=relativehumidity_2m,precipitation_probability&timezone=auto`;
+
+    const data=
+    await fetchWeather(url);
+
+    if(!data){
+
+        return `
+        <div class="card"
+        style="background:#999">
+        ⚠️ ${city.name}<br>
+        資料取得失敗
+        </div>
+        `;
+    }
+
+    const temp=
+    data.current_weather.temperature;
+
+    return `
+
+    <div class="card"
+    style="background:${getColor(temp)}">
+
+        <div class="city">
+
+            <span>${city.name}</span>
+
+            <div class="city-actions">
+
+                <button
+                onclick="moveUp('${city.name}')">
+                ⬆️
+                </button>
+
+                <button
+                onclick="moveDown('${city.name}')">
+                ⬇️
+                </button>
+
+                <button
+                class="delete-btn"
+                onclick="removeCity('${city.name}')">
+                🗑️
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="temp">
+            🌡️ ${temp}°C
+        </div>
+
+        <div class="desc">
+            ${weatherCode(
+            data.current_weather.weathercode
+            )}
+        </div>
+
+        <div class="info-grid">
+
+            <div>
+            💧 ${data.hourly.relativehumidity_2m[0]}%
+            </div>
+
+            <div>
+            ☔ ${data.hourly.precipitation_probability[0]}%
+            </div>
+
+            <div>
+            ⬆ ${data.daily.temperature_2m_max[0]}°C
+            </div>
+
+            <div>
+            ⬇ ${data.daily.temperature_2m_min[0]}°C
+            </div>
+
+        </div>
+
+    </div>
+
+    `;
+}
+
+async function loadAllWeather(){
+
+    const cards=
+    await Promise.all(
+        cities.map(
+        city=>createCard(city)
+        )
+    );
+
+    document.getElementById(
+    "weatherGrid"
+    ).innerHTML=
+    cards.join("");
+
+    document.getElementById(
+    "updateTime"
+    ).innerText=
+    "Last Update : "
+    +new Date().toLocaleString();
+}
+
+function addCity(){
+
+    const cityName=
+    document.getElementById(
+    "cityInput"
+    ).value.trim();
+
+    if(!cityName) return;
+
+    const city=
+    cityDatabase[cityName];
+
+    if(!city){
+
+        alert(
+        "城市不存在於資料庫"
+        );
+
+        return;
+    }
+
+    const exist=
+    cities.some(
+    c=>c.name===city.name
+    );
+
+    if(exist){
+
+        alert(
+        "城市已存在"
+        );
+
+        return;
+    }
+
+    cities.push(city);
+
+    saveCities();
+
+    loadAllWeather();
+
+    document.getElementById(
+    "cityInput"
+    ).value="";
+}
+
+function removeCity(name){
+
+    cities=
+    cities.filter(
+    c=>c.name!==name
+    );
+
+    saveCities();
+
+    loadAllWeather();
+}
+
+function moveUp(cityName){
+
+    const index=
+    cities.findIndex(
+    c=>c.name===cityName
+    );
+
+    if(index<=0){
+        return;
+    }
+
+    [
+    cities[index-1],
+    cities[index]
+    ]
+    =
+    [
+    cities[index],
+    cities[index-1]
+    ];
+
+    saveCities();
+
+    loadAllWeather();
+}
+
+function moveDown(cityName){
+
+    const index=
+    cities.findIndex(
+    c=>c.name===cityName
+    );
+
+    if(
+    index===-1 ||
+    index===cities.length-1
+    ){
+        return;
+    }
+
+    [
+    cities[index+1],
+    cities[index]
+    ]
+    =
+    [
+    cities[index],
+    cities[index+1]
+    ];
+
+    saveCities();
+
+    loadAllWeather();
+}
+
+navigator.geolocation.getCurrentPosition(
+
+async(position)=>{
+
+    await loadMyWeather(
+        position.coords.latitude,
+        position.coords.longitude
+    );
+
+},
+
+()=>{
+
+    document.getElementById(
+    "myWeather"
+    ).innerHTML=
+    "❌ 無法取得GPS定位";
+
+},
+
+{
+    enableHighAccuracy:true,
+    timeout:10000,
+    maximumAge:300000
+}
+
+);
+
+loadAllWeather();
+
+</script>
+
+</body>
+</html>
