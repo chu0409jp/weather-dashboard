@@ -163,7 +163,7 @@ button{
 
 <div class="container">
 
-<h1>🌤 自製天氣APP v4</h1>
+<h1>🌤 自製天氣APP v5</h1>
 
 <div class="toolbar">
 
@@ -322,7 +322,7 @@ async function fetchWeather(url){
 async function loadMyWeather(lat,lon){
 
     const url=
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m&timezone=auto`;
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,precipitation&timezone=auto`;
 
     const data=
     await fetchWeather(url);
@@ -360,7 +360,7 @@ async function loadMyWeather(lat,lon){
 
     const startIndex=
     data.hourly.time.findIndex(
-    t=>new Date(t)>now
+    t=>new Date(t)>=now
     );
 
     for(let i=0;i<6;i++){
@@ -382,19 +382,36 @@ async function loadMyWeather(lat,lon){
         d.getHours()
         ).padStart(2,"0");
 
-        html+=`
+const rain =
+    data.hourly.precipitation[startIndex+i] || 0;
 
-        <div class="forecast-item">
+let rainText="";
 
-            ${hh}:00
+if(rain===0){
+    rainText=`☀️ 沒下雨 (${rain} mm)`;
+}
+else if(rain<=1){
+    rainText=`🌦️ 小雨 (${rain} mm)`;
+}
+else if(rain<=5){
+    rainText=`🌧️ 中雨 (${rain} mm)`;
+}
+else if(rain<=20){
+    rainText=`⛈️ 大雨 (${rain} mm)`;
+}
+else{
+    rainText=`🚨 豪雨 (${rain} mm)`;
+}
 
-            <br>
-
-            ${data.hourly.temperature_2m[startIndex+i]}°
-
-        </div>
-
-        `;
+html+=`
+<div class="forecast-item">
+    ${hh}:00
+    <br>
+    🌡️ ${data.hourly.temperature_2m[startIndex+i]}°C
+    <br>
+    ${rainText}
+</div>
+`;
     }
 
     html+=`
